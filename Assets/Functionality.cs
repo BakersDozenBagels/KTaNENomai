@@ -1,5 +1,4 @@
-﻿
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Text.RegularExpressions;
@@ -23,6 +22,7 @@ public class Functionality : MonoBehaviour {
     public Material[] barMats;
     public GameObject barControl;
     public MeshRenderer bar;
+    public GameObject light;
 
     private int barColor = 0;
 
@@ -137,6 +137,9 @@ public class Functionality : MonoBehaviour {
         //Insert a sun
         int rng = Random.Range(0, 5);
         ordered[rng] = 0;
+        var sun = Instantiate(light);
+        sun.transform.SetParent(buttons[System.Array.IndexOf(ordered, 0)].transform);
+        sun.transform.localPosition = new Vector3(0f, 0f, 0f);
         planetPatterns = ordered;
 
         Debug.LogFormat("[Nomai #{0}] Initialised with planet order: #0: {1} #1: {2} #2: {4} #3: {3} #4: {5} #5(main): {6}", _moduleId, PATTERNS[ordered[0]], PATTERNS[ordered[1]], PATTERNS[ordered[3]], PATTERNS[ordered[2]], PATTERNS[ordered[4]], PATTERNS[ordered[5]]);
@@ -368,9 +371,9 @@ public class Functionality : MonoBehaviour {
         yield return null;
     } 
 
-    IEnumerator reset()
+    IEnumerator reset(float time)
     {
-        for (float i = 0f; i < 80f; i++)
+        for (float i = time; i < 80f; i++)
         {
             timeRatio = i / 80f;
             barControl.gameObject.transform.localScale = new Vector3(timeRatio, 0.01f, 0.01f);
@@ -447,6 +450,12 @@ public class Functionality : MonoBehaviour {
         timeRatio = 1;
         barControl.gameObject.transform.localScale = new Vector3(1f, 0.01f, 0.01f);
         onTimerReset();
+        yield return null;
+    }
+
+    IEnumerator reset()
+    {
+        reset(80f);
         yield return null;
     }
 
@@ -553,7 +562,7 @@ public class Functionality : MonoBehaviour {
     { 
         _isResetting = true;
         StopCoroutine("timer");
-        StartCoroutine("reset");
+        StartCoroutine(reset());
 
         if (_isSixth && barColor == goalColor)
         {
@@ -575,7 +584,7 @@ public class Functionality : MonoBehaviour {
         if (_willDeact) { _isDeact = true; Debug.LogFormat("[Nomai #{0}] Time looping mechanism deactivated.", _moduleId); }
         barColor = 0;
         bar.material = barMats[0];
-        StopCoroutine("reset");
+        StopCoroutine(reset());
         StartCoroutine("timer");
 
         previous3 = new Action[3];
@@ -588,14 +597,13 @@ public class Functionality : MonoBehaviour {
 
     void onFakeStrike()
     {
-        Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.Strike, Module.transform);
         FakeStatusLight.FlashStrikeFixed(currentStatusLightState);
         if (_isDeact)
         {
             FakeStatusLight.HandleStrike();
             Debug.LogFormat("[Nomai #{0}] Real strike! Module will regenerate.", _moduleId);
             StopCoroutine("timer");
-            StopCoroutine("reset");
+            StopCoroutine(reset());
             _isSolved = false;
             _isResetting = false;
             _isSixth = false;
@@ -613,6 +621,8 @@ public class Functionality : MonoBehaviour {
             return;
         }
         _isResetting = true;
+        StopCoroutine("timer");
+        StartCoroutine(reset(timeRatio * 80f));
         Debug.LogFormat("[Nomai #{0}] Fake strike! Module is not interactable until next loop.", _moduleId);
     }
 
@@ -644,7 +654,7 @@ public class Functionality : MonoBehaviour {
         {
             Debug.LogFormat("[Nomai #{0}] Fatal error, regenerating module.", _moduleId);
             StopCoroutine("timer");
-            StopCoroutine("reset");
+            StopCoroutine(reset());
             _isSolved = false;
             _isResetting = true;
             _isSixth = false;
@@ -658,7 +668,7 @@ public class Functionality : MonoBehaviour {
             case1 = null;
             Init();
             reRender();
-            StartCoroutine("reset");
+            StartCoroutine(reset());
             return false;
         }
 
