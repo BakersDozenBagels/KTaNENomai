@@ -24,6 +24,8 @@ public class Functionality : MonoBehaviour {
     public MeshRenderer bar;
     public GameObject light;
 
+    private GameObject sun;
+
     private int barColor = 0;
 
     private int goalColor = -1;
@@ -137,9 +139,11 @@ public class Functionality : MonoBehaviour {
         //Insert a sun
         int rng = Random.Range(0, 5);
         ordered[rng] = 0;
-        var sun = Instantiate(light);
+        sun = Instantiate(light);
         sun.transform.SetParent(buttons[System.Array.IndexOf(ordered, 0)].transform);
         sun.transform.localPosition = new Vector3(0f, 0f, 0f);
+        float scalar = transform.lossyScale.x;
+        sun.GetComponent<Light>().range *= scalar;
         planetPatterns = ordered;
 
         Debug.LogFormat("[Nomai #{0}] Initialised with planet order: #0: {1} #1: {2} #2: {4} #3: {3} #4: {5} #5(main): {6}", _moduleId, PATTERNS[ordered[0]], PATTERNS[ordered[1]], PATTERNS[ordered[3]], PATTERNS[ordered[2]], PATTERNS[ordered[4]], PATTERNS[ordered[5]]);
@@ -453,9 +457,12 @@ public class Functionality : MonoBehaviour {
         yield return null;
     }
 
-    IEnumerator reset()
+    IEnumerator reset(bool ratio)
     {
-        reset(80f);
+        if (ratio)
+            StartCoroutine(reset(timeRatio * 80f));
+        else
+            reset(80f);
         yield return null;
     }
 
@@ -528,7 +535,7 @@ public class Functionality : MonoBehaviour {
             _isDeact = _isDeact || checkDeact();
             if (_isDeact)
             {
-                    Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId);
+                Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId);
             }
         }
         else
@@ -562,14 +569,15 @@ public class Functionality : MonoBehaviour {
     { 
         _isResetting = true;
         StopCoroutine("timer");
-        StartCoroutine(reset());
 
         if (_isSixth && barColor == goalColor)
         {
+            StartCoroutine(reset(true));
             onFakeSolve();
             return;
         }
 
+        StartCoroutine(reset(false));
         onFakeStrike();
         case9 = false;
     }
@@ -584,7 +592,7 @@ public class Functionality : MonoBehaviour {
         if (_willDeact) { _isDeact = true; Debug.LogFormat("[Nomai #{0}] Time looping mechanism deactivated.", _moduleId); }
         barColor = 0;
         bar.material = barMats[0];
-        StopCoroutine(reset());
+        StopCoroutine(reset(false));
         StartCoroutine("timer");
 
         previous3 = new Action[3];
@@ -603,7 +611,8 @@ public class Functionality : MonoBehaviour {
             FakeStatusLight.HandleStrike();
             Debug.LogFormat("[Nomai #{0}] Real strike! Module will regenerate.", _moduleId);
             StopCoroutine("timer");
-            StopCoroutine(reset());
+            StopCoroutine(reset(false));
+            Destroy(sun);
             _isSolved = false;
             _isResetting = false;
             _isSixth = false;
@@ -616,6 +625,7 @@ public class Functionality : MonoBehaviour {
             colorActionsLight = new int[7];
             case1 = null;
             Init();
+            planetsOrder = new int[] { 0, 1, 2, 3, 4, 5 };
             reRender();
             StartCoroutine("timer");
             return;
@@ -654,7 +664,7 @@ public class Functionality : MonoBehaviour {
         {
             Debug.LogFormat("[Nomai #{0}] Fatal error, regenerating module.", _moduleId);
             StopCoroutine("timer");
-            StopCoroutine(reset());
+            StopCoroutine(reset(false));
             _isSolved = false;
             _isResetting = true;
             _isSixth = false;
@@ -668,7 +678,7 @@ public class Functionality : MonoBehaviour {
             case1 = null;
             Init();
             reRender();
-            StartCoroutine(reset());
+            StartCoroutine(reset(false));
             return false;
         }
 
@@ -824,5 +834,44 @@ public class Functionality : MonoBehaviour {
     private int Min(int a, int b)
     {
         return a < b ? a : b;
+    }
+
+    //twitch playz
+    #pragma warning disable 414
+    private readonly string TwitchHelpMessage = @"!{0} press <#/main/sl> [Presses the specified planet '#', the main planet, or the status light] | Valid planets are 0-4 from top to bottom then left to right | Chainable with spaces";
+    #pragma warning restore 414
+    IEnumerator ProcessTwitchCommand(string command)
+    {
+        string[] parameters = command.Split(' ');
+        if (Regex.IsMatch(parameters[0], @"^\s*press\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        {
+            yield return null;
+            if (parameters.Length == 1)
+            {
+                yield return "sendtochaterror Please specify something to press!";
+            }
+            else
+            {
+                for (int i = 1; i < parameters.Length; i++)
+                {
+                    if (!parameters[i].ToLower().EqualsAny("0", "1", "2", "3", "4", "main", "sl"))
+                    {
+                        yield return "sendtochaterror!f The specified thing to press '" + parameters[i] + "' is invalid!";
+                        yield break;
+                    }
+                }
+                for (int i = 1; i < parameters.Length; i++)
+                {
+                    if (parameters[i].ToLower().EqualsAny("0", "1", "2", "3", "4"))
+                        buttons[int.Parse(parameters[i])].OnInteract();
+                    else if (parameters[i].ToLower().Equals("main"))
+                        mainButton.OnInteract();
+                    else
+                        lightButton.OnInteract();
+                    yield return new WaitForSeconds(0.1f);
+                }
+            }
+            yield break;
+        }
     }
 }
