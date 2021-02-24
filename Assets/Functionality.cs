@@ -801,7 +801,7 @@ public class Functionality : MonoBehaviour {
                 case 7:
                     //Navigate from any other planet to this planet.
                     //Working
-                    return previous3[0].AtId == 4;
+                    return previous3[0].AtId == 4 && previous3[0].PressedId != 7 && previous3[0].PressedId != 6;
                 case 8:
                     //Interact with any planet immediately after having interacted with the status light twice.
                     //Working
