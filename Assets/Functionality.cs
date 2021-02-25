@@ -358,14 +358,24 @@ public class Functionality : MonoBehaviour {
         //Make sure the sun has no interactions which change colors
         if (colorActionsLight[sunPos] != 0 || colorActionsMain[sunPos] != 0)
             goto redo;
-        //Make sure all colors are present
+        //Make sure all colors are present only once
         bool[] present = new bool[3];
         for (int i = 0; i < 7; i++)
         {
             if (colorActionsLight[i] != 0)
-                present[colorActionsLight[i] - 1] = true;
+            {
+                if (present[colorActionsLight[i] - 1])
+                    goto redo;
+                else
+                    present[colorActionsLight[i] - 1] = true;
+            }
             if (colorActionsMain[i] != 0)
-                present[colorActionsMain[i] - 1] = true;
+            {
+                if (present[colorActionsMain[i] - 1])
+                    goto redo;
+                else
+                    present[colorActionsMain[i] - 1] = true;
+            }
         }
         if (present.Contains(false))
             goto redo;
@@ -822,7 +832,7 @@ public class Functionality : MonoBehaviour {
                 case 12:
                     //Interact with the status light while on any other planet.
                     //Working
-                    return previous3[0].PressedId == 7 && previous3[0].AtId != 6;
+                    return previous3[0].PressedId == 7 && (previous3[0].AtId != 6 || _isSixth);
             }
         }
         catch { }
