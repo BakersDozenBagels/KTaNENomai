@@ -39,13 +39,13 @@ public class Functionality : MonoBehaviour {
     private static int _moduleIdCounter = 1;
     private int _moduleId = 0;
 
-    //Action modes are: -1: Error 0: Strike 1: Normal 2: Loacation six
+    //Action modes are: -1: Error 0: Strike 1: Normal 2: Sixth Location
     private int[][] planetActions;
 
     private readonly string[] PATTERNS = { "YellowSpots", "BlueWaves", "GrayCraters", "GreenOcean", "GreenSquiggles", "PurpleTriangles", "RedStripes", "PurpleSpiral" };
     private int[] planetPatterns = new int[6];
 
-    private bool _lightsOn = false, _isSolved = false, _isResetting = false, _isSixth = false, _isDeact = false;
+    private bool _lightsOn = false, _isSolved = false, _isResetting = false, _isSixth = false, _isDeact = false, _deactAnnounce = false;
 
     private volatile float timeRatio = 0f;
     private ArrayList timeEvents = new ArrayList();
@@ -55,6 +55,7 @@ public class Functionality : MonoBehaviour {
 
     private int[] planetsOrder = { 0, 1, 2, 3, 4, 5 };
 
+    private string[] DEACTMETHODS = { "Strike the same way you did the previous loop. (It will affect the next loop.) (It will not trigger from time.)", "Navigate to this planet immediately after navigating away from it.", "Interact with the sixth location.", "Interact with any other planet.", "Navigate to the sun. (It will affect the next loop.)", "Interact with this planet twice before any other interactions.", "Navigate from any other planet to this planet.", "Interact with any planet immediately after having interacted with the status light twice.", "Earn a strike immediately after interacting with this planet. (It will affect the next loop.) (It will not trigger from time.)", "Interact with any other planet, then immediately travel to this planet.", "Interact with the status light while at the sixth location.", "Interact with the status light while on any other planet." };
     private int deactMethod = 0;
 
     private Action[] previous3 = new Action[3];
@@ -231,12 +232,17 @@ public class Functionality : MonoBehaviour {
             }
         }
         Debug.LogFormat("[Nomai #{0}] Action table:", _moduleId);
+        Debug.LogFormat("[Nomai #{0}]     0 1 2 3 4 5", _moduleId);
+        int ct = 0;
         foreach (int[] x in planetActions)
         {
-            Debug.LogFormat("[Nomai #{6}] [{0}{1}{2}{3}{4}{5}]", x[0], x[1], x[2], x[3], x[4], x[5], _moduleId);
+            Debug.LogFormat("[Nomai #{6}] {7} [{0} {1} {2} {3} {4} {5}]", x[0].ToString().Replace("-1", "x"), x[1].ToString().Replace("-1", "x"), x[2].ToString().Replace("-1", "x"), x[3].ToString().Replace("-1", "x"), x[4].ToString().Replace("-1", "x"), x[5].ToString().Replace("-1", "x"), _moduleId, ct);
+            ct++;
         }
+        Debug.LogFormat("[Nomai #{0}] (Row = Planet traveled from | Column = Planet traveled to | x = Not possible | 0 = Strike | 1 = Nothing | 2 = Sixth Location)", _moduleId);
 
         //Determine deactivation condition.
+        redo:
         switch (ordered[5])
         {
             case 1:
@@ -349,16 +355,45 @@ public class Functionality : MonoBehaviour {
                 }
                 break;
         }
+        //Make sure the sun has no interactions which change colors
+        if (colorActionsLight[sunPos] != 0 || colorActionsMain[sunPos] != 0)
+            goto redo;
+        //Make sure all colors are present only once
+        bool[] present = new bool[3];
+        for (int i = 0; i < 7; i++)
+        {
+            if (colorActionsLight[i] != 0)
+            {
+                if (present[colorActionsLight[i] - 1])
+                    goto redo;
+                else
+                    present[colorActionsLight[i] - 1] = true;
+            }
+            if (colorActionsMain[i] != 0)
+            {
+                if (present[colorActionsMain[i] - 1])
+                    goto redo;
+                else
+                    present[colorActionsMain[i] - 1] = true;
+            }
+        }
+        if (present.Contains(false))
+            goto redo;
 
-        Debug.LogFormat("[Nomai #{0}] Deactivation method: {1}", _moduleId, deactMethod);
+        Debug.LogFormat("[Nomai #{0}] Deactivation method: {1}", _moduleId, DEACTMETHODS[deactMethod - 1]);
 
         goalColor = Random.Range(1,4);
 
         Debug.LogFormat("[Nomai #{0}] Goal color: {1}", _moduleId, COLORS[goalColor]);
 
-        Debug.LogFormat("[Nomai #{0}] Color Table:", _moduleId);
-        Debug.LogFormat("{0}{1}{2}{3}{4}{5}{6}", colorActionsLight[0], colorActionsLight[1], colorActionsLight[2], colorActionsLight[3], colorActionsLight[4], colorActionsLight[5], colorActionsLight[6]);
-        Debug.LogFormat("{0}{1}{2}{3}{4}{5}{6}", colorActionsMain[0], colorActionsMain[1], colorActionsMain[2], colorActionsMain[3], colorActionsMain[4], colorActionsMain[5], colorActionsMain[6]);
+        Debug.LogFormat("[Nomai #{0}] Color interactions:", _moduleId);
+        for (int i = 0; i < 7; i++)
+        {
+            if (colorActionsLight[i] != 0)
+                Debug.LogFormat("[Nomai #{0}] Interacting with the status light on {1} causes the timer to turn {2}.", _moduleId, i == 6 ? "the sixth location" : "planet " + i, COLORS[colorActionsLight[i]]);
+            if (colorActionsMain[i] != 0)
+                Debug.LogFormat("[Nomai #{0}] Interacting with the main planet on {1} causes the timer to turn {2}.", _moduleId, i == 6 ? "the sixth location" : "planet " + i, COLORS[colorActionsMain[i]]);
+        }
     }
 
     IEnumerator timer()
@@ -488,7 +523,7 @@ public class Functionality : MonoBehaviour {
             ChangeColor(colorActionsMain[_isSixth ? 6 : planetsOrder[5]]);
         }
         _isDeact = _isDeact || checkDeact();
-        if (_isDeact) { Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId); }
+        if (_isDeact) { if (!_deactAnnounce) { _deactAnnounce = true; Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId); } }
     }
 
     void handleLight()
@@ -513,7 +548,7 @@ public class Functionality : MonoBehaviour {
             ChangeColor(colorActionsLight[_isSixth ? 6 : planetsOrder[5]]);
         }
         _isDeact = _isDeact || checkDeact();
-        if (_isDeact) { Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId); }
+        if (_isDeact) { if (!_deactAnnounce) { _deactAnnounce = true; Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId); } }
     }
 
     void handlePress(int id)
@@ -529,18 +564,26 @@ public class Functionality : MonoBehaviour {
         if (!_isSixth) { struck = planetSwap(id, true); }
         else { onFakeStrike(); struck |= true; }
         if (!struck)
-        { 
+        {
             AddAction(wasSixth ? 7 : planetPatterns[planetsOrder[5]], id, struck);
 
             _isDeact = _isDeact || checkDeact();
             if (_isDeact)
             {
-                Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId);
+                if (!_deactAnnounce)
+                {
+                    _deactAnnounce = true;
+                    Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId);
+                }
             }
         }
         else
         {
-            if (deactMethod == 9 && previous3[0].AtId == 5 && previous3[0].PressedId == 6) { case9 = true; }
+            try
+            {
+                if (deactMethod == 9 && previous3[0].AtId == 5 && previous3[0].PressedId == 6) { case9 = true; }
+            }
+            catch { }
             if (case9) { _willDeact = true; }
             case9 = false;
 
@@ -618,12 +661,15 @@ public class Functionality : MonoBehaviour {
             _isSixth = false;
             _isDeact = false;
             _willDeact = false;
+            _deactAnnounce = false;
             timeEvents = new ArrayList();
             timeEventsTimes = new ArrayList();
             previous3 = new Action[3];
             colorActionsMain = new int[7];
             colorActionsLight = new int[7];
             case1 = null;
+            barColor = 0;
+            bar.material = barMats[0];
             Init();
             planetsOrder = new int[] { 0, 1, 2, 3, 4, 5 };
             reRender();
@@ -670,6 +716,7 @@ public class Functionality : MonoBehaviour {
             _isSixth = false;
             _isDeact = false;
             _willDeact = false;
+            _deactAnnounce = false;
             timeEvents = new ArrayList();
             timeEventsTimes = new ArrayList();
             previous3 = new Action[3];
@@ -715,7 +762,7 @@ public class Functionality : MonoBehaviour {
                 timeEventsTimes.Add((float)timeRatio);
             }
 
-            Debug.LogFormat("[Nomai #{0}] Reached location six!.", _moduleId);
+            Debug.LogFormat("[Nomai #{0}] Reached the sixth location!", _moduleId);
         }
         return false;
     }
@@ -764,7 +811,7 @@ public class Functionality : MonoBehaviour {
                 case 7:
                     //Navigate from any other planet to this planet.
                     //Working
-                    return previous3[0].ToId == 4;
+                    return previous3[0].AtId == 4 && previous3[0].PressedId != 7 && previous3[0].PressedId != 6;
                 case 8:
                     //Interact with any planet immediately after having interacted with the status light twice.
                     //Working
@@ -785,7 +832,7 @@ public class Functionality : MonoBehaviour {
                 case 12:
                     //Interact with the status light while on any other planet.
                     //Working
-                    return previous3[0].PressedId == 7 && previous3[0].AtId != 6;
+                    return previous3[0].PressedId == 7 && (previous3[0].AtId != 6 || _isSixth);
             }
         }
         catch { }
@@ -860,6 +907,11 @@ public class Functionality : MonoBehaviour {
                         yield break;
                     }
                 }
+                if (_isResetting)
+                {
+                    yield return "sendtochaterror Cannot interact with the module while it's resetting!";
+                    yield break;
+                }
                 for (int i = 1; i < parameters.Length; i++)
                 {
                     if (parameters[i].ToLower().EqualsAny("0", "1", "2", "3", "4"))
@@ -869,6 +921,8 @@ public class Functionality : MonoBehaviour {
                     else
                         lightButton.OnInteract();
                     yield return new WaitForSeconds(0.1f);
+                    if (_isResetting)
+                        yield break;
                 }
             }
             yield break;
