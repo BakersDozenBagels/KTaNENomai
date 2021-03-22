@@ -232,7 +232,7 @@ public class Functionality : MonoBehaviour {
             }
         }
         Debug.LogFormat("[Nomai #{0}] Action table:", _moduleId);
-        Debug.LogFormat("[Nomai #{0}]     0 1 2 3 4 5", _moduleId);
+        Debug.LogFormat("[Nomai #{0}]    0 1 2 3 4 5", _moduleId);
         int ct = 0;
         foreach (int[] x in planetActions)
         {
@@ -811,7 +811,7 @@ public class Functionality : MonoBehaviour {
                 case 7:
                     //Navigate from any other planet to this planet.
                     //Working
-                    return previous3[0].AtId == 4 && previous3[0].PressedId != 7 && previous3[0].PressedId != 6;
+                    return previous3[0].AtId == 4 && previous3[1].AtId != 4;
                 case 8:
                     //Interact with any planet immediately after having interacted with the status light twice.
                     //Working
