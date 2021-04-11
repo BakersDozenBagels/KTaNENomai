@@ -824,7 +824,7 @@ public class Functionality : MonoBehaviour {
                 case 10:
                     //Interact with any other planet, then immediately travel to this planet.
                     //Working
-                    return planetPatterns[planetsOrder[5]] == 5 && previous3[1].PressedId == 6;
+                    return planetPatterns[planetsOrder[5]] == 5 && previous3[1].PressedId == 6 && previous3[0].PressedId != 6 && previous3[0].PressedId != 7;
                 case 11:
                     //Interact with the status light while at the sixth location.
                     //Working
