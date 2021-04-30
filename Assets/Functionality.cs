@@ -246,8 +246,8 @@ public class Functionality : MonoBehaviour {
         switch (ordered[5])
         {
             case 1:
-                Regex a = new Regex("[" + KMBombInfoExtensions.GetSerialNumberLetters(Info).Join() + "]", RegexOptions.IgnoreCase);
-                if (a.Match(KMBombInfoExtensions.GetIndicators(Info).Join()).Success)
+                Regex a = new Regex("[" + KMBombInfoExtensions.GetSerialNumberLetters(Info).Join("") + "]", RegexOptions.IgnoreCase);
+                if (a.Match(KMBombInfoExtensions.GetIndicators(Info).Join("")).Success)
                 {
                     deactMethod = 1;
                     addColorsRandom(-1);
