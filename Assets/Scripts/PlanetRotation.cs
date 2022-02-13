@@ -23,7 +23,7 @@ public class PlanetRotation : MonoBehaviour {
 	void Update () {
 		for (int i = 0; i < planets.Length; i++)
         {
-            planets[i].transform.Rotate(rotations[i]);
+            planets[i].transform.Rotate(rotations[i] * Time.deltaTime);
         }
 	}
 }

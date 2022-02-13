@@ -8,7 +8,8 @@ using Nomai;
 
 //Nobody is allowed to fix this code!!!
 
-public class Functionality : MonoBehaviour {
+public class Functionality : MonoBehaviour
+{
 
     public KMAudio Audio;
     public KMBombModule Module;
@@ -30,7 +31,7 @@ public class Functionality : MonoBehaviour {
 
     private int goalColor = -1;
 
-    private readonly string[] COLORS = { "Default", "Red", "Green", "Blue"};
+    private readonly string[] COLORS = { "Default", "Red", "Green", "Blue" };
 
     //Status light colors are: 0: Default 1: Red 2: Green 3: Blue
 
@@ -66,6 +67,13 @@ public class Functionality : MonoBehaviour {
 
     private Action case1 = null;
 
+    private Renderer _sunMat;
+    [SerializeField]
+    private GameObject _sunBlocker;
+
+    public Shader bloomShader, _lerpShader, _nomaiShader;
+    private static bool _initCamera;
+
     class Action
     {
         public int AtId;
@@ -83,7 +91,22 @@ public class Functionality : MonoBehaviour {
     }
 
     //Loading screen
-    void Start() {
+    void Start()
+    {
+        if(!_initCamera)
+        {
+            BloomEffect b = Camera.main.gameObject.AddComponent<BloomEffect>();
+            b.bloomShader = Shader.Find("Custom/Bloom");
+            b.intensity = 4f;
+            b.iterations = 5;
+            b.threshold = 1f;
+            b.softThreshold = .5f;
+            b.bloomShader = bloomShader;
+            b._lerpShader = _lerpShader;
+            b._nomaiShader = _nomaiShader;
+            _initCamera = true;
+        }
+
         _moduleId = _moduleIdCounter++;
         Module.OnActivate += Activate;
         Init();
@@ -106,7 +129,7 @@ public class Functionality : MonoBehaviour {
             handleLight();
             return false;
         };
-        for (int i = 0; i < buttons.Length; i++)
+        for(int i = 0; i < buttons.Length; i++)
         {
             int j = i;
             buttons[i].OnInteract += delegate ()
@@ -124,12 +147,20 @@ public class Functionality : MonoBehaviour {
         _lightsOn = true;
     }
 
+    private void Update()
+    {
+        if(_sunMat != null)
+        {
+            _sunMat.material.SetVector("_Angle", new Vector4(_sunBlocker.transform.position.x, _sunBlocker.transform.position.y, _sunBlocker.transform.position.z, 0.28f));
+        }
+    }
+
     //Logical initialization
     void Init()
     {
         //Randomize order of ordered
         int[] ordered = { 6, 2, 3, 4, 5, 1 };
-        for (int i = 5; i > 0; i--)
+        for(int i = 5; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
             int tmp = ordered[i];
@@ -150,20 +181,26 @@ public class Functionality : MonoBehaviour {
         Debug.LogFormat("[Nomai #{0}] Initialised with planet order: #0: {1} #1: {2} #2: {4} #3: {3} #4: {5} #5(main): {6}", _moduleId, PATTERNS[ordered[0]], PATTERNS[ordered[1]], PATTERNS[ordered[3]], PATTERNS[ordered[2]], PATTERNS[ordered[4]], PATTERNS[ordered[5]]);
 
         //Render planets
-        for (int x = 0; x < buttonRenderers.Length; x++)
+        for(int x = 0; x < buttonRenderers.Length; x++)
         {
             buttonRenderers[x].material = buttonMats[planetPatterns[x]];
         }
         mainButtonRenderer.material = buttonMats[planetPatterns[5]];
 
+        _sunMat = buttons[rng].GetComponent<Renderer>();
+        _sunBlocker.transform.parent = buttons[System.Array.IndexOf(ordered, 0)].transform;
+        float d = Mathf.Sqrt(3f) / 6f * 4f + 0.01f;
+        _sunBlocker.transform.localPosition = new Vector3(d, d, d);
+        _sunBlocker.transform.parent = _sunBlocker.transform.parent.parent;
+
         planetActions = new int[6][] { new int[6] { 1, 1, 1, 1, 1, 1 }, new int[6] { 1, 1, 1, 1, 1, 1 }, new int[6] { 1, 1, 1, 1, 1, 1 }, new int[6] { 1, 1, 1, 1, 1, 1 }, new int[6] { 1, 1, 1, 1, 1, 1 }, new int[6] { 1, 1, 1, 1, 1, 1 } };
 
         //Make all actions valid, except for two per planet
-        for (int i = 0; i < 6; i++)
+        for(int i = 0; i < 6; i++)
         {
             int a = Random.Range(0, 6);
             int b = Random.Range(0, 5);
-            if (b == a)
+            if(b == a)
             {
                 b = 5;
             }
@@ -172,7 +209,7 @@ public class Functionality : MonoBehaviour {
         }
 
         //Make self-actions error
-        for (int i = 0; i < 6; i++)
+        for(int i = 0; i < 6; i++)
         {
             planetActions[i][i] = -1;
         }
@@ -180,49 +217,49 @@ public class Functionality : MonoBehaviour {
         //Add sun
         int sunPos = -1;
 
-        for (int i = 0; i < 6; i++)
+        for(int i = 0; i < 6; i++)
         {
-            if (planetPatterns[i] == 0)
+            if(planetPatterns[i] == 0)
             {
                 sunPos = i;
-                for (int x = 0; x < 6; x++)
+                for(int x = 0; x < 6; x++)
                 {
                     planetActions[i][x] = -1;
                 }
             }
         }
-        for (int n = 0; n < 5; n++)
+        for(int n = 0; n < 5; n++)
         {
             int j = n;
-            if (n == sunPos) { j = 5; }
+            if(n == sunPos) { j = 5; }
             planetActions[j][sunPos] = 0;
         }
 
         //Add sixth location
         int fromPlanet = Random.Range(0, 5);
-        if (fromPlanet == sunPos) { fromPlanet = 5; }
+        if(fromPlanet == sunPos) { fromPlanet = 5; }
         int toPlanet = Random.Range(0, 4);
-        if (toPlanet == fromPlanet) { toPlanet = 5; }
+        if(toPlanet == fromPlanet) { toPlanet = 5; }
         planetActions[fromPlanet][toPlanet] = 2;
 
-        if (toPlanet == sunPos) { toPlanet = 4; }
+        if(toPlanet == sunPos) { toPlanet = 4; }
         //Check each planet is visitable
-        for (int i = 0; i < 5; i++)
+        for(int i = 0; i < 5; i++)
         {
             int j = i;
-            if (i == sunPos) { j = 5; }
+            if(i == sunPos) { j = 5; }
             int goodNum = 0;
-            for (int k = 0; k < 6; k++)
+            for(int k = 0; k < 6; k++)
             {
-                if (k == sunPos || k == j) { continue; }
-                if (planetActions[k][j] == 1) { goodNum++; }
+                if(k == sunPos || k == j) { continue; }
+                if(planetActions[k][j] == 1) { goodNum++; }
             }
 
-            while (goodNum < 2)
+            while(goodNum < 2)
             {
-                for (int k = 0; k < 5; k++)
+                for(int k = 0; k < 5; k++)
                 {
-                    if (planetActions[k][j] == 0)
+                    if(planetActions[k][j] == 0)
                     {
                         planetActions[k][j] = 1;
                         goodNum++;
@@ -234,7 +271,7 @@ public class Functionality : MonoBehaviour {
         Debug.LogFormat("[Nomai #{0}] Action table:", _moduleId);
         Debug.LogFormat("[Nomai #{0}]    0 1 2 3 4 5", _moduleId);
         int ct = 0;
-        foreach (int[] x in planetActions)
+        foreach(int[] x in planetActions)
         {
             Debug.LogFormat("[Nomai #{6}] {7} [{0} {1} {2} {3} {4} {5}]", x[0].ToString().Replace("-1", "x"), x[1].ToString().Replace("-1", "x"), x[2].ToString().Replace("-1", "x"), x[3].ToString().Replace("-1", "x"), x[4].ToString().Replace("-1", "x"), x[5].ToString().Replace("-1", "x"), _moduleId, ct);
             ct++;
@@ -243,11 +280,11 @@ public class Functionality : MonoBehaviour {
 
         //Determine deactivation condition.
         redo:
-        switch (ordered[5])
+        switch(ordered[5])
         {
             case 1:
                 Regex a = new Regex("[" + KMBombInfoExtensions.GetSerialNumberLetters(Info).Join("") + "]", RegexOptions.IgnoreCase);
-                if (a.Match(KMBombInfoExtensions.GetIndicators(Info).Join("")).Success)
+                if(a.Match(KMBombInfoExtensions.GetIndicators(Info).Join("")).Success)
                 {
                     deactMethod = 1;
                     addColorsRandom(-1);
@@ -256,9 +293,9 @@ public class Functionality : MonoBehaviour {
                 {
                     deactMethod = 2;
                     //Make sure this method is possible if it occurs.
-                    for (int i= 0; i < 6; i++)
+                    for(int i = 0; i < 6; i++)
                     {
-                        if (planetActions[i][5] == 0)
+                        if(planetActions[i][5] == 0)
                         {
                             planetActions[i][5] = 1;
                             break;
@@ -268,7 +305,7 @@ public class Functionality : MonoBehaviour {
                 }
                 break;
             case 2:
-                if (KMBombInfoExtensions.GetOffIndicators(Info).Count() >= 2)
+                if(KMBombInfoExtensions.GetOffIndicators(Info).Count() >= 2)
                 {
                     deactMethod = 3;
                     addColorsRandom(6);
@@ -279,21 +316,21 @@ public class Functionality : MonoBehaviour {
                     //Add colors
                     int next = -1;
                     int count = 0;
-                    for (int i = 0; i < 7; i++)
+                    for(int i = 0; i < 7; i++)
                     {
                         colorActionsLight[i] = Random.Range(0, 5) == 0 ? next++ % 3 + 1 : 0;
                         count += Min(colorActionsLight[i], 1);
-                        if (count > 5) { break; }
+                        if(count > 5) { break; }
                     }
-                    while (count < 3)
+                    while(count < 3)
                     {
                         int i = Random.Range(0, 7);
-                        if (colorActionsLight[i] == 0) { colorActionsLight[i] = next++ % 3 + 1; count++; }
+                        if(colorActionsLight[i] == 0) { colorActionsLight[i] = next++ % 3 + 1; count++; }
                     }
                 }
                 break;
             case 3:
-                if (KMBombInfoExtensions.GetOnIndicators(Info).Count() >= 2)
+                if(KMBombInfoExtensions.GetOnIndicators(Info).Count() >= 2)
                 {
                     deactMethod = 5;
                     addColorsRandom(-1);
@@ -305,7 +342,7 @@ public class Functionality : MonoBehaviour {
                 }
                 break;
             case 4:
-                if (KMBombInfoExtensions.GetBatteryCount(Info) >= 3)
+                if(KMBombInfoExtensions.GetBatteryCount(Info) >= 3)
                 {
                     deactMethod = 7;
                     addColorsRandom(-1);
@@ -317,7 +354,7 @@ public class Functionality : MonoBehaviour {
                 }
                 break;
             case 5:
-                if (KMBombInfoExtensions.GetBatteryHolderCount(Info) >= 2)
+                if(KMBombInfoExtensions.GetBatteryHolderCount(Info) >= 2)
                 {
                     deactMethod = 9;
                     addColorsRandom(sunPos);
@@ -330,7 +367,7 @@ public class Functionality : MonoBehaviour {
                 break;
             case 6:
                 Regex b = new Regex("[aeiou]", RegexOptions.IgnoreCase);
-                if (b.Match(KMBombInfoExtensions.GetSerialNumberLetters(Info).Join()).Success)
+                if(b.Match(KMBombInfoExtensions.GetSerialNumberLetters(Info).Join()).Success)
                 {
                     deactMethod = 11;
                     addColorsRandom(6);
@@ -341,87 +378,87 @@ public class Functionality : MonoBehaviour {
                     //Add colors
                     int next = -1;
                     int count = 0;
-                    for (int i = 0; i < 7; i++)
+                    for(int i = 0; i < 7; i++)
                     {
                         colorActionsMain[i] = Random.Range(0, 5) == 0 ? next++ % 3 + 1 : 0;
                         count += Min(colorActionsMain[i], 1);
-                        if (count > 5) { break; }
+                        if(count > 5) { break; }
                     }
-                    while (count < 3)
+                    while(count < 3)
                     {
                         int i = Random.Range(0, 7);
-                        if (colorActionsMain[i] == 0) { colorActionsMain[i] = next++ % 3 + 1; count++; }
+                        if(colorActionsMain[i] == 0) { colorActionsMain[i] = next++ % 3 + 1; count++; }
                     }
                 }
                 break;
         }
         //Make sure the sun has no interactions which change colors
-        if (colorActionsLight[sunPos] != 0 || colorActionsMain[sunPos] != 0)
+        if(colorActionsLight[sunPos] != 0 || colorActionsMain[sunPos] != 0)
             goto redo;
         //Make sure all colors are present only once
         bool[] present = new bool[3];
-        for (int i = 0; i < 7; i++)
+        for(int i = 0; i < 7; i++)
         {
-            if (colorActionsLight[i] != 0)
+            if(colorActionsLight[i] != 0)
             {
-                if (present[colorActionsLight[i] - 1])
+                if(present[colorActionsLight[i] - 1])
                     goto redo;
                 else
                     present[colorActionsLight[i] - 1] = true;
             }
-            if (colorActionsMain[i] != 0)
+            if(colorActionsMain[i] != 0)
             {
-                if (present[colorActionsMain[i] - 1])
+                if(present[colorActionsMain[i] - 1])
                     goto redo;
                 else
                     present[colorActionsMain[i] - 1] = true;
             }
         }
-        if (present.Contains(false))
+        if(present.Contains(false))
             goto redo;
 
         Debug.LogFormat("[Nomai #{0}] Deactivation method: {1}", _moduleId, DEACTMETHODS[deactMethod - 1]);
 
-        goalColor = Random.Range(1,4);
+        goalColor = Random.Range(1, 4);
 
         Debug.LogFormat("[Nomai #{0}] Goal color: {1}", _moduleId, COLORS[goalColor]);
 
         Debug.LogFormat("[Nomai #{0}] Color interactions:", _moduleId);
-        for (int i = 0; i < 7; i++)
+        for(int i = 0; i < 7; i++)
         {
-            if (colorActionsLight[i] != 0)
+            if(colorActionsLight[i] != 0)
                 Debug.LogFormat("[Nomai #{0}] Interacting with the status light on {1} causes the timer to turn {2}.", _moduleId, i == 6 ? "the sixth location" : "planet " + i, COLORS[colorActionsLight[i]]);
-            if (colorActionsMain[i] != 0)
+            if(colorActionsMain[i] != 0)
                 Debug.LogFormat("[Nomai #{0}] Interacting with the main planet on {1} causes the timer to turn {2}.", _moduleId, i == 6 ? "the sixth location" : "planet " + i, COLORS[colorActionsMain[i]]);
         }
     }
 
     IEnumerator timer()
     {
-        for (float i = 0f; i<220f; i++)
+        for(float i = 0f; i < 220f; i++)
         {
             timeRatio = (220f - i) / 220f;
-            barControl.gameObject.transform.localScale = new Vector3(timeRatio,0.01f,0.01f);
+            barControl.gameObject.transform.localScale = new Vector3(timeRatio, 0.01f, 0.01f);
             yield return new WaitForSeconds(0.1f);
         }
         timeRatio = 0f;
         barControl.gameObject.transform.localScale = new Vector3(0f, 0.01f, 0.01f);
         onTimerEnd();
         yield return null;
-    } 
+    }
 
     IEnumerator reset(float time)
     {
-        for (float i = time; i < 80f; i++)
+        for(float i = time; i < 80f; i++)
         {
             timeRatio = i / 80f;
             barControl.gameObject.transform.localScale = new Vector3(timeRatio, 0.01f, 0.01f);
 
-            for (int e = timeEvents.Count -1; e >= 0; e--)
+            for(int e = timeEvents.Count - 1; e >= 0; e--)
             {
-                if (e < 0) { break; }
+                if(e < 0) { break; }
 
-                if ((float)timeEventsTimes[e] <= timeRatio)
+                if((float)timeEventsTimes[e] <= timeRatio)
                 {
                     if((string)timeEvents[e] == "FakeSolve")
                     {
@@ -429,58 +466,58 @@ public class Functionality : MonoBehaviour {
                         currentStatusLightState = StatusLightState.Off;
                     }
 
-                    if ((string)timeEvents[e] == "Swap 0")
+                    if((string)timeEvents[e] == "Swap 0")
                     {
                         planetSwap(0, false);
                     }
 
-                    if ((string)timeEvents[e] == "Swap 1")
+                    if((string)timeEvents[e] == "Swap 1")
                     {
                         planetSwap(1, false);
                     }
 
-                    if ((string)timeEvents[e] == "Swap 2")
+                    if((string)timeEvents[e] == "Swap 2")
                     {
                         planetSwap(2, false);
                     }
 
-                    if ((string)timeEvents[e] == "Swap 3")
+                    if((string)timeEvents[e] == "Swap 3")
                     {
                         planetSwap(3, false);
                     }
 
-                    if ((string)timeEvents[e] == "Swap 4")
+                    if((string)timeEvents[e] == "Swap 4")
                     {
                         planetSwap(4, false);
                     }
 
-                    if ((string)timeEvents[e] == "Swap 7")
+                    if((string)timeEvents[e] == "Swap 7")
                     {
                         reRender();
                     }
 
-                    if ((string)timeEvents[e] == "Color Change From 1")
+                    if((string)timeEvents[e] == "Color Change From 1")
                     {
                         ChangeColor(1);
                     }
 
-                    if ((string)timeEvents[e] == "Color Change From 2")
+                    if((string)timeEvents[e] == "Color Change From 2")
                     {
                         ChangeColor(2);
                     }
 
-                    if ((string)timeEvents[e] == "Color Change From 3")
+                    if((string)timeEvents[e] == "Color Change From 3")
                     {
                         ChangeColor(3);
                     }
 
-                    if ((string)timeEvents[e] == "Color Add")
+                    if((string)timeEvents[e] == "Color Add")
                     {
                         barColor = 0;
                         bar.material = barMats[0];
                     }
 
-                        timeEvents.RemoveAt(e);
+                    timeEvents.RemoveAt(e);
                     timeEventsTimes.RemoveAt(e);
                 }
             }
@@ -494,7 +531,7 @@ public class Functionality : MonoBehaviour {
 
     IEnumerator reset(bool ratio)
     {
-        if (ratio)
+        if(ratio)
             StartCoroutine(reset(timeRatio * 80f));
         else
             reset(80f);
@@ -505,12 +542,12 @@ public class Functionality : MonoBehaviour {
     {
         Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, mainButton.transform);
         mainButton.AddInteractionPunch();
-        if (!_lightsOn || _isSolved || _isResetting) { return; }
+        if(!_lightsOn || _isSolved || _isResetting) { return; }
         Debug.LogFormat("[Nomai #{0}] Main button pressed.", _moduleId);
-        AddAction(_isSixth ? 6 : planetPatterns[planetsOrder[5]],6,false);
-        if (colorActionsMain[_isSixth ? 6 : planetsOrder[5]] >= 1)
+        AddAction(_isSixth ? 6 : planetPatterns[planetsOrder[5]], 6, false);
+        if(colorActionsMain[_isSixth ? 6 : planetsOrder[5]] >= 1)
         {
-            if (barColor == 0)
+            if(barColor == 0)
             {
                 timeEvents.Add("Color Add");
                 timeEventsTimes.Add((float)timeRatio);
@@ -523,19 +560,19 @@ public class Functionality : MonoBehaviour {
             ChangeColor(colorActionsMain[_isSixth ? 6 : planetsOrder[5]]);
         }
         _isDeact = _isDeact || checkDeact();
-        if (_isDeact) { if (!_deactAnnounce) { _deactAnnounce = true; Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId); } }
+        if(_isDeact) { if(!_deactAnnounce) { _deactAnnounce = true; Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId); } }
     }
 
     void handleLight()
     {
         Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, lightButton.transform);
         lightButton.AddInteractionPunch();
-        if (!_lightsOn || _isSolved || _isResetting) { return; }
+        if(!_lightsOn || _isSolved || _isResetting) { return; }
         Debug.LogFormat("[Nomai #{0}] Status light pressed.", _moduleId);
         AddAction(_isSixth ? 6 : planetPatterns[planetsOrder[5]], 7, false);
         if(colorActionsLight[_isSixth ? 6 : planetsOrder[5]] >= 1)
         {
-            if (barColor == 0)
+            if(barColor == 0)
             {
                 timeEvents.Add("Color Add");
                 timeEventsTimes.Add((float)timeRatio);
@@ -548,29 +585,29 @@ public class Functionality : MonoBehaviour {
             ChangeColor(colorActionsLight[_isSixth ? 6 : planetsOrder[5]]);
         }
         _isDeact = _isDeact || checkDeact();
-        if (_isDeact) { if (!_deactAnnounce) { _deactAnnounce = true; Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId); } }
+        if(_isDeact) { if(!_deactAnnounce) { _deactAnnounce = true; Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId); } }
     }
 
     void handlePress(int id)
     {
         Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, buttons[id].transform);
         buttons[id].AddInteractionPunch();
-        if (!_lightsOn || _isSolved || _isResetting) { return; }
+        if(!_lightsOn || _isSolved || _isResetting) { return; }
         Debug.LogFormat("[Nomai #{0}] Planet {1} pressed.", _moduleId, id);
 
         bool struck = false;
         bool wasSixth = _isSixth;
 
-        if (!_isSixth) { struck = planetSwap(id, true); }
+        if(!_isSixth) { struck = planetSwap(id, true); }
         else { onFakeStrike(); struck |= true; }
-        if (!struck)
+        if(!struck)
         {
             AddAction(wasSixth ? 7 : planetPatterns[planetsOrder[5]], id, struck);
 
             _isDeact = _isDeact || checkDeact();
-            if (_isDeact)
+            if(_isDeact)
             {
-                if (!_deactAnnounce)
+                if(!_deactAnnounce)
                 {
                     _deactAnnounce = true;
                     Debug.LogFormat("[Nomai #{0}] Careful! Looping mechanism disabled.", _moduleId);
@@ -581,17 +618,17 @@ public class Functionality : MonoBehaviour {
         {
             try
             {
-                if (deactMethod == 9 && previous3[0].AtId == 5 && previous3[0].PressedId == 6) { case9 = true; }
+                if(deactMethod == 9 && previous3[0].AtId == 5 && previous3[0].PressedId == 6) { case9 = true; }
             }
             catch { }
-            if (case9) { _willDeact = true; }
+            if(case9) { _willDeact = true; }
             case9 = false;
 
-            if (deactMethod == 1)
+            if(deactMethod == 1)
             {
                 try
                 {
-                    if (case1.AtId == (_isSixth ? 7 : planetPatterns[planetsOrder[5]]) && case1.ToId == (id <= 5 ? planetPatterns[planetsOrder[id]] : -1))
+                    if(case1.AtId == (_isSixth ? 7 : planetPatterns[planetsOrder[5]]) && case1.ToId == (id <= 5 ? planetPatterns[planetsOrder[id]] : -1))
                     {
                         _willDeact = true;
                     }
@@ -601,7 +638,7 @@ public class Functionality : MonoBehaviour {
                 case1 = new Action(_isSixth ? 7 : planetPatterns[planetsOrder[5]], -1, true, id <= 5 ? planetPatterns[planetsOrder[id]] : -1);
             }
 
-            if ((id <= 5 ? planetPatterns[planetsOrder[id]] : -1) == 0 && deactMethod == 5)
+            if((id <= 5 ? planetPatterns[planetsOrder[id]] : -1) == 0 && deactMethod == 5)
             {
                 _willDeact = true;
             }
@@ -609,11 +646,11 @@ public class Functionality : MonoBehaviour {
     }
 
     void onTimerEnd()
-    { 
+    {
         _isResetting = true;
         StopCoroutine("timer");
 
-        if (_isSixth && barColor == goalColor)
+        if(_isSixth && barColor == goalColor)
         {
             StartCoroutine(reset(true));
             onFakeSolve();
@@ -632,7 +669,7 @@ public class Functionality : MonoBehaviour {
 
         _isSixth = false;
         _isResetting = false;
-        if (_willDeact) { _isDeact = true; Debug.LogFormat("[Nomai #{0}] Time looping mechanism deactivated.", _moduleId); }
+        if(_willDeact) { _isDeact = true; Debug.LogFormat("[Nomai #{0}] Time looping mechanism deactivated.", _moduleId); }
         barColor = 0;
         bar.material = barMats[0];
         StopCoroutine(reset(false));
@@ -649,7 +686,7 @@ public class Functionality : MonoBehaviour {
     void onFakeStrike()
     {
         FakeStatusLight.FlashStrikeFixed(currentStatusLightState);
-        if (_isDeact)
+        if(_isDeact)
         {
             FakeStatusLight.HandleStrike();
             Debug.LogFormat("[Nomai #{0}] Real strike! Module will regenerate.", _moduleId);
@@ -685,7 +722,7 @@ public class Functionality : MonoBehaviour {
     void onFakeSolve()
     {
         Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.CorrectChime, Module.transform);
-        if (_isDeact && barColor == goalColor)
+        if(_isDeact && barColor == goalColor)
         {
             _isSolved = true;
             Debug.LogFormat("[Nomai #{0}] Real solve! Congratulations!", _moduleId);
@@ -706,7 +743,7 @@ public class Functionality : MonoBehaviour {
 
     bool planetSwap(int id, bool normal)
     {
-        if (planetActions[planetsOrder[5]][planetsOrder[id]] == -1)
+        if(planetActions[planetsOrder[5]][planetsOrder[id]] == -1)
         {
             Debug.LogFormat("[Nomai #{0}] Fatal error, regenerating module.", _moduleId);
             StopCoroutine("timer");
@@ -729,7 +766,7 @@ public class Functionality : MonoBehaviour {
             return false;
         }
 
-        if( planetActions[planetsOrder[5]][planetsOrder[id]] == 0 && normal)
+        if(planetActions[planetsOrder[5]][planetsOrder[id]] == 0 && normal)
         {
             onFakeStrike();
             return true;
@@ -742,7 +779,7 @@ public class Functionality : MonoBehaviour {
             planetsOrder[id] = tmp;
             reRender();
 
-            if (normal)
+            if(normal)
             {
                 timeEvents.Add("Swap " + id);
                 timeEventsTimes.Add((float)timeRatio);
@@ -751,12 +788,12 @@ public class Functionality : MonoBehaviour {
             Debug.LogFormat("[Nomai #{0}] Swapping planets {1} and 5(main).", _moduleId, id);
         }
 
-        if (planetActions[planetsOrder[5]][planetsOrder[id]] == 2 && normal)
+        if(planetActions[planetsOrder[5]][planetsOrder[id]] == 2 && normal)
         {
             mainButtonRenderer.material = buttonMats[7];
             _isSixth = true;
 
-            if (normal)
+            if(normal)
             {
                 timeEvents.Add("Swap 6");
                 timeEventsTimes.Add((float)timeRatio);
@@ -769,7 +806,7 @@ public class Functionality : MonoBehaviour {
 
     void reRender()
     {
-        for (int x = 0; x < buttonRenderers.Length + 1; x++)
+        for(int x = 0; x < buttonRenderers.Length + 1; x++)
         {
             if(x == 5) { mainButtonRenderer.material = buttonMats[planetPatterns[planetsOrder[5]]]; }
             else { buttonRenderers[x].material = buttonMats[planetPatterns[planetsOrder[x]]]; }
@@ -781,7 +818,7 @@ public class Functionality : MonoBehaviour {
     {
         try
         {
-            switch (deactMethod)
+            switch(deactMethod)
             {
                 case 1:
                     //Strike the same way you did the previous loop. (It will affect the next loop.) (It will not trigger from time.)
@@ -858,22 +895,22 @@ public class Functionality : MonoBehaviour {
     {
         int next = -1;
         int count = 0;
-        for (int i = 0; i < 7; i++)
+        for(int i = 0; i < 7; i++)
         {
-            if (i == disabled) { colorActionsLight[i] = 0; colorActionsMain[i] = 0; continue; }
+            if(i == disabled) { colorActionsLight[i] = 0; colorActionsMain[i] = 0; continue; }
             colorActionsLight[i] = Random.Range(0, 5) == 0 ? next++ % 3 + 1 : 0;
             colorActionsMain[i] = Random.Range(0, 5) == 0 ? next++ % 3 + 1 : 0;
             count += Min(colorActionsLight[i], 1) + Min(colorActionsMain[i], 1);
-            if (count > 7) { break; }
+            if(count > 7) { break; }
         }
-        while (count < 3)
+        while(count < 3)
         {
             int i = Random.Range(0, 7);
-            if (i != disabled)
+            if(i != disabled)
             {
                 int choice = Random.Range(0, 2);
-                if (choice == 1 && colorActionsLight[i] == 0) { colorActionsLight[i] = next++ % 3 + 1; count++; }
-                else if (colorActionsMain[i] == 0) { colorActionsMain[i] = next++ % 3 + 1; count++; }
+                if(choice == 1 && colorActionsLight[i] == 0) { colorActionsLight[i] = next++ % 3 + 1; count++; }
+                else if(colorActionsMain[i] == 0) { colorActionsMain[i] = next++ % 3 + 1; count++; }
             }
         }
     }
@@ -884,44 +921,44 @@ public class Functionality : MonoBehaviour {
     }
 
     //twitch playz
-    #pragma warning disable 414
+#pragma warning disable 414
     private readonly string TwitchHelpMessage = @"!{0} press <#/main/sl> [Presses the specified planet '#', the main planet, or the status light] | Valid planets are 0-4 from top to bottom then left to right | Chainable with spaces";
-    #pragma warning restore 414
+#pragma warning restore 414
     IEnumerator ProcessTwitchCommand(string command)
     {
         string[] parameters = command.Split(' ');
-        if (Regex.IsMatch(parameters[0], @"^\s*press\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        if(Regex.IsMatch(parameters[0], @"^\s*press\s*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
         {
             yield return null;
-            if (parameters.Length == 1)
+            if(parameters.Length == 1)
             {
                 yield return "sendtochaterror Please specify something to press!";
             }
             else
             {
-                for (int i = 1; i < parameters.Length; i++)
+                for(int i = 1; i < parameters.Length; i++)
                 {
-                    if (!parameters[i].ToLower().EqualsAny("0", "1", "2", "3", "4", "main", "sl"))
+                    if(!parameters[i].ToLower().EqualsAny("0", "1", "2", "3", "4", "main", "sl"))
                     {
                         yield return "sendtochaterror!f The specified thing to press '" + parameters[i] + "' is invalid!";
                         yield break;
                     }
                 }
-                if (_isResetting)
+                if(_isResetting)
                 {
                     yield return "sendtochaterror Cannot interact with the module while it's resetting!";
                     yield break;
                 }
-                for (int i = 1; i < parameters.Length; i++)
+                for(int i = 1; i < parameters.Length; i++)
                 {
-                    if (parameters[i].ToLower().EqualsAny("0", "1", "2", "3", "4"))
+                    if(parameters[i].ToLower().EqualsAny("0", "1", "2", "3", "4"))
                         buttons[int.Parse(parameters[i])].OnInteract();
-                    else if (parameters[i].ToLower().Equals("main"))
+                    else if(parameters[i].ToLower().Equals("main"))
                         mainButton.OnInteract();
                     else
                         lightButton.OnInteract();
                     yield return new WaitForSeconds(0.1f);
-                    if (_isResetting)
+                    if(_isResetting)
                         yield break;
                 }
             }
