@@ -73,6 +73,14 @@ public class Functionality : MonoBehaviour
 
     public Shader bloomShader, _lerpShader, _nomaiShader;
     private static bool _initCamera;
+    private int sunPosReal;
+    private bool _stopAll;
+
+    private void Transform()
+    {
+        StopAllCoroutines();
+        _stopAll = true;
+    }
 
     class Action
     {
@@ -169,7 +177,7 @@ public class Functionality : MonoBehaviour
         }
 
         //Insert a sun
-        int rng = Random.Range(0, 5);
+        int rng = sunPosReal = Random.Range(0, 5);
         ordered[rng] = 0;
         sun = Instantiate(light);
         sun.transform.SetParent(buttons[System.Array.IndexOf(ordered, 0)].transform);
@@ -190,6 +198,7 @@ public class Functionality : MonoBehaviour
         _sunMat = buttons[rng].GetComponent<Renderer>();
         _sunBlocker.transform.parent = buttons[System.Array.IndexOf(ordered, 0)].transform;
         float d = Mathf.Sqrt(3f) / 6f * 4f + 0.01f;
+        // TODO: Randomize Sun Blocker
         _sunBlocker.transform.localPosition = new Vector3(d, d, d);
         _sunBlocker.transform.parent = _sunBlocker.transform.parent.parent;
 
@@ -540,6 +549,8 @@ public class Functionality : MonoBehaviour
 
     void handleMain()
     {
+        if(_stopAll)
+            return;
         Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, mainButton.transform);
         mainButton.AddInteractionPunch();
         if(!_lightsOn || _isSolved || _isResetting) { return; }
@@ -565,6 +576,8 @@ public class Functionality : MonoBehaviour
 
     void handleLight()
     {
+        if(_stopAll)
+            return;
         Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, lightButton.transform);
         lightButton.AddInteractionPunch();
         if(!_lightsOn || _isSolved || _isResetting) { return; }
@@ -590,8 +603,21 @@ public class Functionality : MonoBehaviour
 
     void handlePress(int id)
     {
+        if(_stopAll)
+            return;
         Audio.PlayGameSoundAtTransform(KMSoundOverride.SoundEffect.ButtonPress, buttons[id].transform);
         buttons[id].AddInteractionPunch();
+
+        if(_lightsOn && !_isSolved && planetPatterns[id] == 0)
+        {
+            float angle = Mathf.Acos(Vector3.Dot((buttons[id].transform.position - _sunBlocker.transform.position).normalized, (_sunBlocker.transform.position - Camera.main.transform.position).normalized));
+            if(angle < 0.36f)
+            {
+                Transform();
+                return;
+            }
+        }
+
         if(!_lightsOn || _isSolved || _isResetting) { return; }
         Debug.LogFormat("[Nomai #{0}] Planet {1} pressed.", _moduleId, id);
 
